@@ -26,14 +26,15 @@ class Viewer(mp.Process):
     def __init__(self, connection: Connection):
         super().__init__()
         self._connection = connection
+        self._min_detection_area = 300
         self._stop_event = mp.Event()
 
-    @staticmethod
-    def _draw_contours(frame: np.ndarray, contours: Tuple[np.ndarray]) -> None:
+    def _draw_detections(self, frame: np.ndarray, contours: Tuple[np.ndarray]) -> None:
         for contour in contours:
-            if cv2.contourArea(contour) < 300:
+            if cv2.contourArea(contour) < self._min_detection_area:
                 continue
             (x, y, w, h) = cv2.boundingRect(contour)
+            frame[y:y+h, x:x+w, :] = cv2.blur(frame[y:y+h, x:x+w, :], (5, 5))
             cv2.rectangle(img=frame, pt1=(x, y), pt2=(x + w, y + h), **_contour_properties)
 
     @staticmethod
@@ -47,8 +48,8 @@ class Viewer(mp.Process):
         while not self._stop_event.is_set():
             if not self._connection.poll(0.2):
                 continue
-            frame, frame_number, counters = self._connection.recv()
-            self._draw_contours(frame, counters)
+            frame, frame_number, detections = self._connection.recv()
+            self._draw_detections(frame, detections)
             self._draw_time(frame)
             cv2.imshow('Viewer', frame)
             cv2.waitKey(1)
