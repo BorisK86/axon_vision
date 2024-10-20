@@ -5,10 +5,11 @@ from multiprocessing.connection import Connection
 
 class Streamer(mp.Process):
 
-    def __init__(self, path: str, connection: Connection):
+    def __init__(self, path: str, connection: Connection, finish_event: mp.Event):
         super().__init__()
         self._path = path
         self._connection = connection
+        self._finish_event = finish_event
         self._stop_event = mp.Event()
 
     def run(self) -> None:
@@ -27,6 +28,7 @@ class Streamer(mp.Process):
                 cv2.waitKey(dt_ms)
             frame_number += 1
         video.release()
+        self._finish_event.set()
         print('Streamer stopped')
 
     def stop(self) -> None:
